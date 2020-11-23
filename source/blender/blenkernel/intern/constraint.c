@@ -965,30 +965,9 @@ static void default_get_tarmat_full_bbone(struct Depsgraph *UNUSED(depsgraph),
   } \
   (void)0
 
-static void custom_space_id_looper(bConstraint *con, ConstraintIDFunc func, void *userdata)
+static bool is_custom_space_needed(bConstraint *con)
 {
-  func(con, (ID **)&con->space_object, false, userdata);
-}
-
-static int get_space_tar(bConstraint *con, ListBase *list)
-{
-  if (!con || !list ||
-      (con->ownspace != CONSTRAINT_SPACE_CUSTOM && con->tarspace != CONSTRAINT_SPACE_CUSTOM)) {
-    return 0;
-  }
-  bConstraintTarget *ct;
-  SINGLETARGET_GET_TARS(con, con->space_object, con->space_subtarget, ct, list);
-  return 1;
-}
-
-static void flush_space_tar(bConstraint *con, ListBase *list, bool no_copy)
-{
-  if (!con || !list ||
-      (con->ownspace != CONSTRAINT_SPACE_CUSTOM && con->tarspace != CONSTRAINT_SPACE_CUSTOM)) {
-    return;
-  }
-  bConstraintTarget *ct = (bConstraintTarget *)list->last;
-  SINGLETARGET_FLUSH_TARS(con, con->space_object, con->space_subtarget, ct, list, no_copy);
+  return con->ownspace == CONSTRAINT_SPACE_CUSTOM || con->tarspace == CONSTRAINT_SPACE_CUSTOM;
 }
 
 /* --------- ChildOf Constraint ------------ */
@@ -1177,8 +1156,6 @@ static void trackto_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int trackto_get_tars(bConstraint *con, ListBase *list)
@@ -1190,7 +1167,7 @@ static int trackto_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -1204,7 +1181,6 @@ static void trackto_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -1677,11 +1653,11 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
     "Limit Location",            /* name */
     "bLocLimitConstraint",       /* struct name */
     NULL,                        /* free data */
-    custom_space_id_looper,      /* id looper */
+    NULL,                        /* id looper */
     NULL,                        /* copy data */
     NULL,                        /* new data */
-    get_space_tar,               /* get constraint targets */
-    flush_space_tar,             /* flush constraint targets */
+    NULL,                        /* get constraint targets */
+    NULL,                        /* flush constraint targets */
     NULL,                        /* get target matrix */
     loclimit_evaluate,           /* evaluate */
 };
@@ -1758,11 +1734,11 @@ static bConstraintTypeInfo CTI_ROTLIMIT = {
     "Limit Rotation",            /* name */
     "bRotLimitConstraint",       /* struct name */
     NULL,                        /* free data */
-    custom_space_id_looper,      /* id looper */
+    NULL,                        /* id looper */
     NULL,                        /* copy data */
     NULL,                        /* new data */
-    get_space_tar,               /* get constraint targets */
-    flush_space_tar,             /* flush constraint targets */
+    NULL,                        /* get constraint targets */
+    NULL,                        /* flush constraint targets */
     NULL,                        /* get target matrix */
     rotlimit_evaluate,           /* evaluate */
 };
@@ -1825,11 +1801,11 @@ static bConstraintTypeInfo CTI_SIZELIMIT = {
     "Limit Scale",                /* name */
     "bSizeLimitConstraint",       /* struct name */
     NULL,                         /* free data */
-    custom_space_id_looper,       /* id looper */
+    NULL,                         /* id looper */
     NULL,                         /* copy data */
     NULL,                         /* new data */
-    get_space_tar,                /* get constraint targets */
-    flush_space_tar,              /* flush constraint targets */
+    NULL,                         /* get constraint targets */
+    NULL,                         /* flush constraint targets */
     NULL,                         /* get target matrix */
     sizelimit_evaluate,           /* evaluate */
 };
@@ -1849,8 +1825,6 @@ static void loclike_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int loclike_get_tars(bConstraint *con, ListBase *list)
@@ -1862,7 +1836,7 @@ static int loclike_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -1876,7 +1850,6 @@ static void loclike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -1949,8 +1922,6 @@ static void rotlike_id_looper(bConstraint *con, ConstraintIDFunc func, void *use
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int rotlike_get_tars(bConstraint *con, ListBase *list)
@@ -1962,7 +1933,7 @@ static int rotlike_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -1976,7 +1947,6 @@ static void rotlike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -2130,8 +2100,6 @@ static void sizelike_id_looper(bConstraint *con, ConstraintIDFunc func, void *us
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int sizelike_get_tars(bConstraint *con, ListBase *list)
@@ -2143,7 +2111,7 @@ static int sizelike_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -2157,7 +2125,6 @@ static void sizelike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -2255,8 +2222,6 @@ static void translike_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int translike_get_tars(bConstraint *con, ListBase *list)
@@ -2268,7 +2233,7 @@ static int translike_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -2282,7 +2247,6 @@ static void translike_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -2416,11 +2380,11 @@ static bConstraintTypeInfo CTI_SAMEVOL = {
     "Maintain Volume",             /* name */
     "bSameVolumeConstraint",       /* struct name */
     NULL,                          /* free data */
-    custom_space_id_looper,        /* id looper */
+    NULL,                          /* id looper */
     NULL,                          /* copy data */
     samevolume_new_data,           /* new data */
-    get_space_tar,                 /* get constraint targets */
-    flush_space_tar,               /* flush constraint targets */
+    NULL,                          /* get constraint targets */
+    NULL,                          /* flush constraint targets */
     NULL,                          /* get target matrix */
     samevolume_evaluate,           /* evaluate */
 };
@@ -2826,8 +2790,6 @@ static void actcon_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
 
   /* action */
   func(con, (ID **)&data->act, true, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int actcon_get_tars(bConstraint *con, ListBase *list)
@@ -2839,7 +2801,7 @@ static int actcon_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -2853,7 +2815,6 @@ static void actcon_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -3354,8 +3315,6 @@ static void distlimit_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int distlimit_get_tars(bConstraint *con, ListBase *list)
@@ -3367,7 +3326,7 @@ static int distlimit_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -3381,7 +3340,6 @@ static void distlimit_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -3710,8 +3668,6 @@ static void minmax_id_looper(bConstraint *con, ConstraintIDFunc func, void *user
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int minmax_get_tars(bConstraint *con, ListBase *list)
@@ -3723,7 +3679,7 @@ static int minmax_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -3737,7 +3693,6 @@ static void minmax_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -4035,8 +3990,6 @@ static void transform_id_looper(bConstraint *con, ConstraintIDFunc func, void *u
 
   /* target only */
   func(con, (ID **)&data->tar, false, userdata);
-
-  custom_space_id_looper(con, func, userdata);
 }
 
 static int transform_get_tars(bConstraint *con, ListBase *list)
@@ -4048,7 +4001,7 @@ static int transform_get_tars(bConstraint *con, ListBase *list)
     /* standard target-getting macro for single-target constraints */
     SINGLETARGET_GET_TARS(con, data->tar, data->subtarget, ct, list);
 
-    return 1 + get_space_tar(con, list);
+    return 1;
   }
 
   return 0;
@@ -4062,7 +4015,6 @@ static void transform_flush_tars(bConstraint *con, ListBase *list, bool no_copy)
 
     /* the following macro is used for all standard single-target constraints */
     SINGLETARGET_FLUSH_TARS(con, data->tar, data->subtarget, ct, list, no_copy);
-    flush_space_tar(con, list, no_copy);
   }
 }
 
@@ -5598,6 +5550,19 @@ static void con_unlink_refs_cb(bConstraint *UNUSED(con),
   }
 }
 
+/** Helper function to invoke the id_looper callback, including custom space. */
+static void con_invoke_id_looper(const bConstraintTypeInfo *cti,
+                                 bConstraint *con,
+                                 ConstraintIDFunc func,
+                                 void *userdata)
+{
+  if (cti->id_looper) {
+    cti->id_looper(con, func, userdata);
+  }
+
+  func(con, (ID **)&con->space_object, false, userdata);
+}
+
 void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)
 {
   if (con->data) {
@@ -5610,8 +5575,8 @@ void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)
       }
 
       /* unlink the referenced resources it uses */
-      if (do_id_user && cti->id_looper) {
-        cti->id_looper(con, con_unlink_refs_cb, NULL);
+      if (do_id_user) {
+        con_invoke_id_looper(cti, con, con_unlink_refs_cb, NULL);
       }
     }
 
@@ -5904,9 +5869,12 @@ static bConstraint *add_new_constraint(Object *ob,
   return con;
 }
 
-bool BKE_constraint_target_uses_bbone(struct bConstraint *con,
-                                      struct bConstraintTarget *UNUSED(ct))
+bool BKE_constraint_target_uses_bbone(struct bConstraint *con, struct bConstraintTarget *ct)
 {
+  if (ct->flag & CONSTRAINT_TAR_CUSTOM_SPACE) {
+    return false;
+  }
+
   return (con->flag & CONSTRAINT_BBONE_SHAPE) || (con->type == CONSTRAINT_TYPE_ARMATURE);
 }
 
@@ -5937,9 +5905,7 @@ void BKE_constraints_id_loop(ListBase *conlist, ConstraintIDFunc func, void *use
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 
     if (cti) {
-      if (cti->id_looper) {
-        cti->id_looper(con, func, userdata);
-      }
+      con_invoke_id_looper(cti, con, func, userdata);
     }
   }
 }
@@ -5991,16 +5957,14 @@ static void constraint_copy_data_ex(bConstraint *dst,
     }
 
     /* Fix usercounts for all referenced data that need it. */
-    if (cti->id_looper && (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-      cti->id_looper(dst, con_fix_copied_refs_cb, NULL);
+    if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+      con_invoke_id_looper(cti, dst, con_fix_copied_refs_cb, NULL);
     }
 
     /* for proxies we don't want to make extern */
     if (do_extern) {
       /* go over used ID-links for this constraint to ensure that they are valid for proxies */
-      if (cti->id_looper) {
-        cti->id_looper(dst, con_extern_cb, NULL);
-      }
+      con_invoke_id_looper(cti, dst, con_extern_cb, NULL);
     }
   }
 }
@@ -6254,6 +6218,61 @@ bool BKE_constraints_proxylocked_owner(Object *ob, bPoseChannel *pchan)
 
 /* -------- Target-Matrix Stuff ------- */
 
+int BKE_constraint_targets_get(struct bConstraint *con, struct ListBase *list)
+{
+  int count = 0;
+
+  if (con && list) {
+    const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+
+    if (cti) {
+      /* Constraint-specific targets. */
+      if (cti->get_constraint_targets) {
+        count = cti->get_constraint_targets(con, list);
+      }
+
+      /* Add the custom target. */
+      if (is_custom_space_needed(con)) {
+        bConstraintTarget *ct;
+        SINGLETARGET_GET_TARS(con, con->space_object, con->space_subtarget, ct, list);
+        ct->space = CONSTRAINT_SPACE_WORLD;
+        ct->flag |= CONSTRAINT_TAR_CUSTOM_SPACE;
+        count++;
+      }
+    }
+  }
+
+  return count;
+}
+
+void BKE_constraint_targets_flush(struct bConstraint *con, struct ListBase *list, bool no_copy)
+{
+  if (con && list) {
+    const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+
+    if (cti) {
+      /* Remove the custom target. */
+      bConstraintTarget *ct = (bConstraintTarget *)list->last;
+
+      if (ct && (ct->flag & CONSTRAINT_TAR_CUSTOM_SPACE)) {
+        BLI_assert(is_custom_space_needed(con));
+
+        if (!no_copy) {
+          con->space_object = ct->tar;
+          BLI_strncpy(con->space_subtarget, ct->subtarget, sizeof(con->space_subtarget));
+        }
+
+        BLI_freelinkN(list, ct);
+      }
+
+      /* Release the constraint-specific targets. */
+      if (cti->flush_constraint_targets) {
+        cti->flush_constraint_targets(con, list, no_copy);
+      }
+    }
+  }
+}
+
 void BKE_constraint_target_matrix_get(struct Depsgraph *depsgraph,
                                       Scene *scene,
                                       bConstraint *con,
@@ -6304,6 +6323,9 @@ void BKE_constraint_target_matrix_get(struct Depsgraph *depsgraph,
         break;
       }
     }
+
+    /* Initialize the custom space for use in calculating the matrices. */
+    BKE_constraint_custom_object_space_init(cob, con);
 
     /* get targets - we only need the first one though (and there should only be one) */
     cti->get_constraint_targets(con, &targets);
@@ -6368,33 +6390,24 @@ void BKE_constraint_targets_for_solving_get(struct Depsgraph *depsgraph,
   }
 }
 
-void BKE_constraint_custom_object_space_get(float r_mat[4][4], bConstraint *con)
+/** Initialize the Custom Space matrix inside cob. */
+void BKE_constraint_custom_object_space_init(bConstraintOb *cob, bConstraint *con)
 {
-  if (!con ||
-      (con->ownspace != CONSTRAINT_SPACE_CUSTOM && con->tarspace != CONSTRAINT_SPACE_CUSTOM)) {
-    return;
-  }
-  bConstraintTarget *ct;
-  ListBase target = {NULL, NULL};
-  SINGLETARGET_GET_TARS(con, con->space_object, con->space_subtarget, ct, &target);
-
-  /* Basically default_get_tarmat but without the unused parameters. */
-  if (VALID_CONS_TARGET(ct)) {
-    constraint_target_to_mat4(ct->tar,
-                              ct->subtarget,
+  if (con && con->space_object && is_custom_space_needed(con)) {
+    /* Basically default_get_tarmat but without the unused parameters. */
+    constraint_target_to_mat4(con->space_object,
+                              con->space_subtarget,
                               NULL,
-                              ct->matrix,
+                              cob->space_obj_world_matrix,
                               CONSTRAINT_SPACE_WORLD,
                               CONSTRAINT_SPACE_WORLD,
                               0,
                               0);
-    copy_m4_m4(r_mat, ct->matrix);
-  }
-  else {
-    unit_m4(r_mat);
+
+    return;
   }
 
-  SINGLETARGET_FLUSH_TARS(con, con->space_object, con->space_subtarget, ct, &target, true);
+  unit_m4(cob->space_obj_world_matrix);
 }
 
 /* ---------- Evaluation ----------- */
@@ -6439,8 +6452,8 @@ void BKE_constraints_solve(struct Depsgraph *depsgraph,
      */
     enf = con->enforce;
 
-    /* Get custom space matrix. */
-    BKE_constraint_custom_object_space_get(cob->space_obj_world_matrix, con);
+    /* Initialize the custom space for use in calculating the matrices. */
+    BKE_constraint_custom_object_space_init(cob, con);
 
     /* make copy of world-space matrix pre-constraint for use with blending later */
     copy_m4_m4(oldmat, cob->matrix);
